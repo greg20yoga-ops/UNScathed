@@ -1,0 +1,60 @@
+# ======================================================================
+# TODO(Yoga): samakan lokasi & spesifikasi panel dengan docs/keputusan.md
+# Nilai di bawah hanya CONTOH supaya pipeline bisa jalan.
+# ======================================================================
+site:
+  name: CONTOH-Badung-Bali
+  latitude: -8.65
+  longitude: 115.18
+  altitude: 20
+  tz: Asia/Makassar
+
+panel:
+  pdc0_w: 50          # panel 50 Wp
+  gamma_pdc: -0.004   # koefisien suhu daya (1/°C), tipikal silikon
+  tilt: 10
+  azimuth: 0          # 0 = menghadap utara (belahan bumi selatan)
+  system_loss: 0.14   # rugi kabel/mismatch/dll (asumsi, beri label di proposal)
+
+weather:
+  start: "2025-01-01"
+  end: "2025-12-31"
+
+data:
+  train_frac: 0.5          # pembagian BERDASARKAN WAKTU, bukan acak
+  min_expected_frac: 0.10  # "siang" = produksi seharusnya > 10% pdc0
+
+detector:
+  threshold_frac: 0.30     # alarm biasa: daya < 30% pdc0 ...
+  threshold_hours: [9, 15] # ... pada jam 09-15
+  ratio_thr: 0.80          # alarm sadar-cuaca: aktual/seharusnya < 0.80
+  ratio_clear: 0.90        # alarm padam bila rasio kembali > 0.90
+  ratio_quantile: 0.5      # 0.5 = median; turunkan (mis. 0.35) bila ingin lebih sensitif
+  window_h: 6              # median bergulir (jam)
+  consecutive_h: 3         # harus bertahan (jam)
+  detect_window_days: 7    # deteksi dihitung bila muncul <= 7 hari setelah gangguan
+  episode_gap_h: 6         # alarm dengan jeda <6 jam dihitung satu kejadian
+
+rupiah:
+  # TODO(Rafie): ganti dengan rumus final di docs/rupiah.md
+  # (energi hilang x nilai listrik + baterai cepat rusak + biaya patroli)
+  tarif_rp_per_kwh: 1445
+  patrol_cost_rp_per_alarm: 0
+
+faults:
+  fault_start_offset_days: 21   # gangguan mulai 21 hari setelah awal data uji
+  # TODO(Bobi): terjemahkan docs/pola_gangguan.md ke bentuk ini
+  patterns:
+    soiling:          # panel kotor: turun bertahap
+      cause: panel_kotor
+      detect_window_days: 30   # penurunan bertahap butuh waktu lebih lama
+      variants: [{rate_per_day: 0.010, max_loss: 0.40}, {rate_per_day: 0.020, max_loss: 0.40}, {rate_per_day: 0.030, max_loss: 0.50}]
+    cable_cut:        # kabel/string putus: mendadak ~0
+      cause: kabel_putus
+      variants: [{residual: 0.00}, {residual: 0.03}]
+    partial_shading:  # teduhan sebagian di jam tertentu tiap hari
+      cause: teduhan_sebagian
+      variants: [{hours: [12, 16], depth: 0.45}, {hours: [13, 16], depth: 0.65}]
+    derating:         # inverter/charge controller membatasi daya
+      cause: inverter_derating
+      variants: [{cap_frac: 0.55}, {cap_frac: 0.35}, {cap_frac: 0.20}]   # 0.55 = ringan (batas kemampuan deteksi, lihat README)

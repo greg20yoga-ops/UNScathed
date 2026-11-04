@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+# data mentah besar jangan di-commit (catat sumbernya di docs/sumber_data.md)
+data/raw/kaggle/
+data/raw/*.csv
+!data/raw/.gitkeep
