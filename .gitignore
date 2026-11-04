@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 .venv/
 .ipynb_checkpoints/
+# rahasia bot Telegram
+.env
 # data mentah besar jangan di-commit (catat sumbernya di docs/sumber_data.md)
 data/raw/kaggle/
 data/raw/*.csv
