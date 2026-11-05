@@ -10,6 +10,7 @@ from . import battery, causes, detector, faults, residual
 from .config import ARTIFACT_DIR, PROCESSED_DIR, ROOT, load_config
 from .features import peer_expected, sensor_expected
 from .monitor import detect, load_artifact, score_unit
+from .prepare import fetch_bboxx
 from .schema import FAULT_CAUSE
 from .train import load_sensor, load_unit, split
 
@@ -114,6 +115,8 @@ def real_shading(frame, control, detectors, cfg):
 def battery_check(cfg):
     """Aturan sag pada baterai nyata: berapa yang tertangkap sebelum masuk perbaikan."""
     b, raw = cfg["battery"], ROOT / "data" / "raw" / "bboxx"
+    if not raw.exists():
+        fetch_bboxx()
     meta = pd.read_csv(raw / "meta_data.csv").set_index("ID")
     rows = []
     for path in sorted(raw.rglob("*.npz")):

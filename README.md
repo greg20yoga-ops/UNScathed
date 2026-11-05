@@ -11,7 +11,8 @@ Untuk pendaftaran semuanya dibuktikan dengan **simulasi dan data publik**; alat 
 
 | Folder | Isi | Pemilik |
 |---|---|---|
-| `model/` | model produksi seharusnya, detektor, tebakan penyebab, evaluasi | Christian |
+| `ml/` | **pipeline ML terbaru**: produksi seharusnya, detektor, penyebab, rupiah, evaluasi, jalur IoT (`ml/README.md`) | Christian |
+| `model/` | versi awal pada data sintetis, digantikan `ml/` | Christian |
 | `data/raw/`, `data/sim/` | data cuaca/PV mentah (tidak di-commit bila besar), data simulasi berlabel | Christian |
 | `output/` | **`hasil_deteksi.csv`: file penghubung model → dashboard/bot** (kontrak di bawah) | Christian |
 | `dashboard/` | dashboard Streamlit + bot Telegram | Yoga |
@@ -25,7 +26,7 @@ python -m venv .venv
 .venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
-python -m model.run --source synthetic          # model Christian (data SINTETIS)
+python -m ml.evaluate                           # model Christian: evaluasi + output/hasil_deteksi.csv
 streamlit run dashboard/app.py                  # dashboard
 python -m dashboard.telegram_bot --dry-run      # bot: lihat pesan tanpa mengirim
 ```
@@ -63,7 +64,7 @@ Disepakati 4 Nov 2026, dari usulan Christian + tambahan Yoga.
 |---|---|---|---|
 | `batt_i_a` | angka | **A** | Arus baterai. **Positif = mengisi (charging), negatif = membuang (discharging)** |
 | `alarm_threshold` | `0`/`1` | — | Alarm biasa (ambang tetap) pada data yang sama, untuk grafik perbandingan |
-| `data_source` | `sintetis` / `openmeteo` / `kaggle` | — | Asal cuaca + produksi. Beda dengan `data_label`: baris `nyata` bisa tetap memakai cuaca sintetis |
+| `data_source` | `sintetis` / `openmeteo` / `kaggle` / `lareunion` / `iot` | — | Asal cuaca + produksi. Beda dengan `data_label`: baris `nyata` bisa tetap memakai cuaca sintetis |
 | `fault_label` | teks | — | Gangguan yang sebenarnya disuntikkan (`none` bila tidak ada). Hanya untuk demo/evaluasi |
 
 ### Daftar nilai `cause_guess`
@@ -97,11 +98,12 @@ timestamp,unit_id,pv_actual_w,pv_expected_w,batt_v,alarm,cause_guess,loss_rp,dat
 
 Angka di contoh hanya ilustrasi.
 
-### Status (4 Nov)
+### Status (5 Nov)
 
-- [ ] Model masih menulis format lama (`data/sim/output_<skenario>.csv`: `scenario`, `True/False`, tanpa zona waktu, `teduhan_sebagian`).
-      Dashboard sementara mengonversinya otomatis (`dashboard/data.py`); begitu `output/hasil_deteksi.csv` ada, file itu yang dipakai.
-- [ ] Belum ada skenario baterai (`baterai_dicabut`, `baterai_melemah`) dan `batt_v`/`batt_i_a`.
-- [ ] Lama tunggu alarm: samakan antara `consecutive_h` di `config.yaml` (sekarang 3 jam) dan dokumen ini.
-- [ ] Lokasi + spesifikasi panel final: `docs/keputusan.md` → `site:`/`panel:` di `config.yaml`.
-- [ ] Rumus rugi Rp final (Rafie, `docs/rupiah.md`) → `_loss_rp` di `model/evaluate.py`.
+- [x] `output/hasil_deteksi.csv` dibuat `ml/` sesuai kontrak, termasuk skenario baterai. Data bulan Maret 2022 (La Réunion, 50 Wp).
+- [x] Jalur alat IoT: `docs/kontrak_telemetri.md` + `python -m ml.score`.
+- [ ] Alarm kini memakai CUSUM, bukan N jam berturut-turut. `consecutive_h` di `config.yaml` hanya untuk `model/` lama.
+- [ ] `cause_guess` tidak memakai `inverter_derating`.
+- [ ] Lokasi + spesifikasi panel final: `docs/keputusan.md` → `ml/situs_contoh.yaml`.
+- [ ] Rumus rugi Rp final (Rafie, `docs/rupiah.md`) → `rupiah:` di `ml/config.yaml`. Sekarang hanya energi hilang × tarif.
+- [ ] Parameter gangguan (Bobi, `docs/pola_gangguan.md`) → `faults:` di `ml/config.yaml`.

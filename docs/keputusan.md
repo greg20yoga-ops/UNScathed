@@ -33,3 +33,4 @@ v1 disepakati 4 Nov 2026, lihat `README.md` → "Kontrak data v1".
 | Tanggal | Keputusan | Oleh |
 |---|---|---|
 | 4 Nov 2026 | Format keluaran model = usulan Christian + `batt_i_a`, `alarm_threshold`, `data_source`, `fault_label`; zona waktu lokasi | Yoga, Christian |
+| 5 Nov 2026 | Pipeline ML pindah ke `ml/`; data evaluasi La Réunion; `data_source` ditambah `lareunion`, `iot`; `site.tz` di `config.yaml` jadi Indian/Reunion | Christian |
