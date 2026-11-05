@@ -1,0 +1,19 @@
+# Contoh lokasi pemasangan. Lokasi dan panel final: docs/keputusan.md (Yoga).
+site:
+  name: CONTOH-Badung-Bali
+  latitude: -8.65
+  longitude: 115.18
+  altitude: 20
+  tz: Asia/Makassar
+
+panel:
+  tilt: 10
+  azimuth: 0
+  gamma_pdc: -0.004
+  system_loss: 0.14
+
+rupiah:
+  tarif_rp_per_kwh: 1699.53
+  panel_w: 50
+  biaya_patroli_rp: 0
+  biaya_baterai_rp: 0

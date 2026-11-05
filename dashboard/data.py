@@ -37,6 +37,8 @@ SOURCE_TEXT = {
     "sintetis": "SINTETIS (cuaca + produksi buatan)",
     "openmeteo": "Cuaca nyata Open-Meteo + produksi buatan",
     "kaggle": "Cuaca + produksi nyata (Kaggle)",
+    "lareunion": "Produksi nyata La Réunion (diskalakan ke 50 Wp) + cuaca satelit",
+    "iot": "Telemetri alat + cuaca satelit",
 }
 
 

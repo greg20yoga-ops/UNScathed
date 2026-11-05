@@ -7,3 +7,5 @@ requests
 pyyaml
 tabulate
 streamlit>=1.30
+xgboost
+pytest

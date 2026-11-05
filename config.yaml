@@ -3,11 +3,11 @@
 # Nilai di bawah hanya CONTOH supaya pipeline bisa jalan.
 # ======================================================================
 site:
-  name: CONTOH-Badung-Bali
-  latitude: -8.65
-  longitude: 115.18
-  altitude: 20
-  tz: Asia/Makassar
+  name: La-Reunion   # situs data output/hasil_deteksi.csv; dashboard memakai tz ini. Lokasi pasang: ml/situs_contoh.yaml
+  latitude: -20.90126
+  longitude: 55.48422
+  altitude: 76
+  tz: Indian/Reunion
 
 panel:
   pdc0_w: 50          # panel 50 Wp

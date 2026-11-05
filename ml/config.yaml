@@ -1,0 +1,84 @@
+# Konfigurasi pipeline ML (situs evaluasi: La Réunion). Sumber tiap angka ada di docs/sumber_data.md.
+site:
+  name: La-Reunion
+  latitude: -20.90126
+  longitude: 55.48422
+  altitude: 76
+  tz: Indian/Reunion
+
+panel:
+  tilt: 26            # Graillet dkk. 2023
+  azimuth: 11         # "11 derajat dari utara" (Graillet dkk. 2023), arah sisi belum disebut
+  gamma_pdc: -0.004   # asumsi: tipikal silikon polikristal
+  system_loss: 0.14   # asumsi: rugi kabel/mismatch, dikoreksi XGBoost
+
+units:
+  # Paper menyebut modul TE1700 dan TE1500, tapi tidak menyebut baris mana ke inverter mana.
+  # Pada hari normal inv1/inv2 = 1,00 (median), jadi keduanya dianggap berkapasitas sama.
+  inv1: {capacity_w: 1800}
+  inv2: {capacity_w: 1800}
+
+split:
+  test_start: "2022-02-01"   # semua gangguan nyata ada di rentang ini
+  test_end: "2022-06-01"
+  n_folds: 5
+
+model:
+  params:            # dipakai di semua kandidat
+    objective: "reg:absoluteerror"
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 0
+  grid:
+    max_depth: [2, 3, 4]
+    n_estimators: [100, 300]
+    learning_rate: [0.03]
+
+detector:
+  min_sun_elevation: 10      # derajat
+  min_expected: 0.10         # per kapasitas; di bawah ini rasio tidak bermakna
+  clear_index_bins: [0.3, 0.6]
+  z_clip: 3.0                # satu jam berawan tidak boleh memicu alarm sendirian
+  cusum_k: 0.5               # simpangan terkecil yang dianggap berarti (satuan sigma)
+  target_false_alarm_per_week: 0.5
+  dead_output: 0.01          # daya ~0 saat cerah: langsung alarm
+  dead_expected: 0.30
+  threshold_hours: [9, 15]   # alarm biasa, jam lokal
+  threshold_frac: 0.20       # untuk grafik; versi adil dicari saat kalibrasi
+
+causes:
+  history_days: 7
+  near_zero_ratio: 0.10
+  clear_sky_min: 0.6
+  recent_hours: 12
+  loose_min_hours: 6
+  loose_p90_min: 0.30
+  soiling_min_deficit: 0.10
+  shading_min_days: 3
+  shading_hour_gap: 0.25
+  shading_repeat: 0.5
+
+battery:
+  full_v: 14.4               # aki penuh: controller membatasi panel, bukan gangguan (Yoga: cek PWM/MPPT)
+  # median sag aki 20 Ah BBOXX saat baru = 0,10 V/Ah, batas = 1,25 x itu. Kapasitas lain perlu skala ulang.
+  weak_sag_v_per_ah: 0.125
+  recent_days: 7
+  missing_hours: 2
+
+rupiah:
+  tarif_rp_per_kwh: 1699.53     # P-3/TR penerangan jalan umum, tarif PLN triwulan IV 2026
+  panel_w: 50                   # skala panel PJU
+  biaya_patroli_rp: 0           # ASUMSI: menunggu docs/rupiah.md (Rafie)
+  biaya_baterai_rp: 0           # ASUMSI: menunggu docs/rupiah.md (Rafie)
+
+faults:
+  n_events: 10
+  seed: 7
+  start_hour_local: 9
+  variants:
+    cable_cut:       [{days: 1}, {days: 3}]
+    soiling:         [{rate_per_day: 0.01, days: 21}, {rate_per_day: 0.02, days: 14}, {rate_per_day: 0.04, days: 10}]
+    partial_shading: [{depth: 0.3, hour: 13, length_h: 2, days: 5}, {depth: 0.6, hour: 13, length_h: 2, days: 5}]
+    loose_connector: [{days: 2, prob: 0.3}, {days: 5, prob: 0.3}]
+  soiling_max_loss: 0.30
+  rain_wash_mm: 5
