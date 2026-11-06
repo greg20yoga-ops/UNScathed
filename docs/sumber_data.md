@@ -9,7 +9,7 @@ Setiap angka di proposal harus bisa ditelusuri ke tabel ini.
 | Radiasi satelit terbaru (Indonesia) | Open-Meteo Satellite API (JMA/JAXA Himawari) | live | Non-komersial, wajib sitasi | NYATA |
 | Suhu, angin, awan, hujan | Open-Meteo Historical Weather API (ERA5) | sama | Non-komersial, wajib sitasi Open-Meteo + Copernicus | NYATA |
 | Rekaman baterai | Aitio & Howey 2021, Oxford ORA, DOI 10.5287/bodleian:aVR4oDV4N, [arXiv:2107.13856](https://arxiv.org/abs/2107.13856). 27 baterai (`set_10.zip`) | 400–760 hari per baterai | CC BY-NC 4.0 (non-komersial) | NYATA, sistem berbeda dari panel |
-| Gangguan | `ml/faults.py`, parameter `ml/config.yaml` | — | buatan | SUNTIKAN |
+| Gangguan | `ml/evaluation/faults.py`, parameter `ml/config.yaml` | — | buatan | SUNTIKAN |
 
 **Pemilihan sumber radiasi (diuji 4 Nov 2026):** terhadap sensor La Réunion, SARAH3 berkorelasi 0,86 dan ERA5 0,81 pada ±6.000 jam siang.
 
@@ -17,4 +17,3 @@ Setiap angka di proposal harus bisa ditelusuri ke tabel ini.
 
 **Tarif:** P-3/TR Rp1.699,53/kWh. Sumber berita ([Kompas TV](https://www.kompas.tv/info-publik/678125/update-tarif-listrik-pln-1-juli-2026-cek-harga-per-kwh-semua-golongan)), tarif triwulan IV 2026 tidak naik. Perlu dikonfirmasi ke halaman tarif PLN.
 
-Versi awal pada data sintetis (`model/`, `data/sim/`, `bukti/grafik_metrik.png`) sudah digantikan `ml/` dan jangan dikutip.

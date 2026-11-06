@@ -5,11 +5,11 @@ Ini yang harus dikirim alat supaya bisa dinilai model. Pasangannya, kontrak kelu
 ## Alur
 
 ```
-Alat (ESP32 + sensor)  →  server tim  →  telemetri.csv  →  python -m ml.score  →  output/hasil_deteksi.csv  →  dashboard + bot
+Alat (ESP32 + sensor)  →  server tim  →  telemetri.csv  →  ml.service.score()  →  output/hasil_deteksi.csv  →  dashboard + bot
 ```
 
 Cara kirim (HTTP/MQTT) bebas. Model hanya butuh tabel dengan kolom di bawah. Server cukup menyimpan **8+ hari terakhir**
-lalu menjalankan `ml.score` tiap jam. Model tidak menyimpan status, jadi kalau server mati tidak ada yang hilang.
+lalu memanggil `ml.service.score()` tiap jam. Model tidak menyimpan status, jadi kalau server mati tidak ada yang hilang.
 
 ## Kolom per pembacaan
 
@@ -41,9 +41,9 @@ Kalau alat memang tidak memantau baterai, jangan kirim kolom `batt_v` sama sekal
 1. **Posisi sensor:** model butuh produksi panel, jadi `pv_v` dan `pv_i` harus di antara panel dan controller.
 2. **Aki penuh:** saat aki penuh controller mengerem panel, produksi turun padahal panel sehat. Model mengabaikan jam dengan
    `batt_v ≥ 14,4 V` (`battery.full_v` di `ml/config.yaml`). Angka ini harus disesuaikan dengan controller dan jenis aki.
-3. **Lokasi dan panel final:** isi di `ml/situs_contoh.yaml`.
+3. **Lokasi dan panel final:** isi di `ml/sites/contoh.yaml`.
 
 ## Lokasi baru
 
 Unit baru langsung jalan dengan **pvlib saja**. Koreksi XGBoost khas lokasi, jadi model La Réunion tidak dipakai di Indonesia.
-Setelah 2–4 minggu data normal, latih ulang di lokasi itu dengan data telemetri (`ml/residual.py`, `ml/train.py`).
+Setelah 2–4 minggu data normal, latih model lokasi itu dengan `ml.service.train()`.

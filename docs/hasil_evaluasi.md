@@ -1,4 +1,4 @@
-# Hasil evaluasi (dibuat otomatis oleh `python -m ml.evaluate`)
+# Hasil evaluasi (dibuat otomatis oleh `python -m ml evaluate`)
 
 **Data:** produksi nyata La Réunion (Okt 2021–Apr 2023), radiasi satelit SARAH3, suhu/angin ERA5.
 **Periode uji:** Feb–Mei 2022 (1170 jam, tidak dipakai melatih). Gangguan **disuntikkan**, kecuali baris bayangan nyata.

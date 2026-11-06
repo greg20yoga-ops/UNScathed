@@ -12,8 +12,7 @@ Untuk pendaftaran semuanya dibuktikan dengan **simulasi dan data publik**; alat 
 | Folder | Isi | Pemilik |
 |---|---|---|
 | `ml/` | **pipeline ML terbaru**: produksi seharusnya, detektor, penyebab, rupiah, evaluasi, jalur IoT (`ml/README.md`) | Christian |
-| `model/` | versi awal pada data sintetis, digantikan `ml/` | Christian |
-| `data/raw/`, `data/sim/` | data cuaca/PV mentah (tidak di-commit bila besar), data simulasi berlabel | Christian |
+| `data/raw/`, `data/processed/` | data mentah (tidak di-commit bila besar), data olahan per jam | Christian |
 | `output/` | **`hasil_deteksi.csv`: file penghubung model → dashboard/bot** (kontrak di bawah) | Christian |
 | `dashboard/` | dashboard Streamlit + bot Telegram | Yoga |
 | `docs/` | keputusan, rupiah, sumber, pola gangguan, evaluasi, draf proposal | semua |
@@ -26,7 +25,7 @@ python -m venv .venv
 .venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
-python -m ml.evaluate                           # model Christian: evaluasi + output/hasil_deteksi.csv
+python -m ml evaluate                           # model Christian: evaluasi + output/hasil_deteksi.csv
 streamlit run dashboard/app.py                  # dashboard
 python -m dashboard.telegram_bot --dry-run      # bot: lihat pesan tanpa mengirim
 ```
@@ -101,9 +100,9 @@ Angka di contoh hanya ilustrasi.
 ### Status (5 Nov)
 
 - [x] `output/hasil_deteksi.csv` dibuat `ml/` sesuai kontrak, termasuk skenario baterai. Data bulan Maret 2022 (La Réunion, 50 Wp).
-- [x] Jalur alat IoT: `docs/kontrak_telemetri.md` + `python -m ml.score`.
-- [ ] Alarm kini memakai CUSUM, bukan N jam berturut-turut. `consecutive_h` di `config.yaml` hanya untuk `model/` lama.
+- [x] Jalur alat IoT: `docs/kontrak_telemetri.md` + `ml.service.score()`.
+- [x] Alarm memakai CUSUM, bukan N jam berturut-turut.
 - [ ] `cause_guess` tidak memakai `inverter_derating`.
-- [ ] Lokasi + spesifikasi panel final: `docs/keputusan.md` → `ml/situs_contoh.yaml`.
-- [ ] Rumus rugi Rp final (Rafie, `docs/rupiah.md`) → `rupiah:` di `ml/config.yaml`. Sekarang hanya energi hilang × tarif.
+- [ ] Lokasi + spesifikasi panel final: `docs/keputusan.md` → `ml/sites/contoh.yaml`.
+- [ ] Rumus rugi Rp final (Rafie, `docs/rupiah.md`) → `rupiah:` di `ml/sites/`. Sekarang hanya energi hilang × tarif.
 - [ ] Parameter gangguan (Bobi, `docs/pola_gangguan.md`) → `faults:` di `ml/config.yaml`.
