@@ -8,55 +8,74 @@ Hasil lengkap: `docs/hasil_evaluasi.md`. Rancangan dan keterbatasan: `docs/evalu
 ```bash
 pip install -r requirements.txt       # macOS: brew install libomp
 python -m pytest ml/tests             # test, tanpa internet
-python -m ml.evaluate                 # hasil, grafik, output/hasil_deteksi.csv
-python -m ml.train                    # latih ulang (data olahan sudah ada di repo)
-python -m ml.prepare                  # unduh ulang data mentah, ±30 menit
+python -m ml evaluate                 # hasil, grafik, output/hasil_deteksi.csv
+python -m ml train                    # latih ulang model La Réunion
+python -m ml prepare                  # unduh ulang data mentah, ±30 menit
+python -m ml evaluate --tune          # uji aturan penyebab di data latih
 ```
 
 ## Alur
 
 ```
-cuaca satelit ─► physics.estimate ─► p_pvlib ─┐
-      └───────── fitur ─► residual (XGBoost) ─┴► produksi seharusnya
-telemetri alat ─► telemetry.to_hourly ─► produksi aktual ─┤
-                                                          ▼
-                 detector: kekurangan → z (derau per kondisi langit) → CUSUM → alarm
-                                                          ▼
-                 causes (aturan) → rupiah → baris kontrak v1 (monitor.score_unit)
+data/        semua sumber -> satu tabel per jam
+features.py  cuaca + fisika pvlib
+model.py     XGBoost, kalibrasi, simpan-muat model per lokasi
+detection/   kekurangan -> CUSUM -> alarm -> penyebab -> rupiah -> baris kontrak v1
+evaluation/  suntikan gangguan, metrik, grafik, file demo
+service.py   score() dan train() untuk kode lain
 ```
 
 | File | Tugas |
 |---|---|
-| `telemetry.py` | Pintu masuk alat IoT: validasi + rangkum per jam |
-| `weather.py` | Open-Meteo: historis dan terbaru |
-| `lareunion.py`, `battery.py` | Pembaca dataset |
-| `physics.py` | Estimasi pvlib |
-| `features.py` | Satukan aktual + cuaca + fisika; acuan tetangga dan sensor |
-| `residual.py` | XGBoost: tuning, out-of-fold, prediksi |
-| `detector.py` | Kekurangan, derau, CUSUM, threshold pembanding |
-| `causes.py`, `rupiah.py` | Aturan penyebab, rugi per jam |
-| `faults.py` | Generator gangguan untuk pengujian |
-| `monitor.py` | **Satu jalur skor** untuk data historis dan IoT |
-| `prepare.py`, `train.py`, `evaluate.py`, `score.py` | Perintah CLI |
-| `config.yaml`, `situs_contoh.yaml` | Parameter evaluasi, parameter lokasi pasang |
+| `data/sources.py` | Pembaca tiap sumber: La Réunion, BBOXX, telemetri alat |
+| `data/weather.py` | Open-Meteo: historis dan terbaru |
+| `data/prepare.py` | Unduh, simpan, dan muat `data/processed/` |
+| `features.py` | Estimasi pvlib, penggabungan tabel, acuan tetangga dan sensor |
+| `model.py` | Tuning, out-of-fold, kalibrasi, artifact per lokasi |
+| `detection/detector.py` | Derau, CUSUM, threshold pembanding |
+| `detection/causes.py`, `battery.py`, `rupiah.py` | Aturan penyebab, baterai, rugi |
+| `detection/pipeline.py` | **Satu jalur skor** untuk data historis dan IoT |
+| `evaluation/` | `faults`, `experiments`, `report`, `demo`, `run` |
+| `config.yaml` | Parameter umum |
+| `sites/<lokasi>.yaml` | Lokasi, panel, tarif |
+| `artifacts/<lokasi>/` | Model dan kalibrasi lokasi itu |
 
-## Integrasi IoT
+**Sumber data baru:** tambah satu fungsi di `data/sources.py` yang menghasilkan tabel per jam dengan kolom `p_actual`.
 
-Kontrak alat: `docs/kontrak_telemetri.md`. Tiap jam, server menjalankan:
+**Lokasi baru:** tambah `sites/<lokasi>.yaml`. Sebelum dilatih, lokasi itu memakai pvlib dengan profil derau bawaan.
 
-```bash
-python -m ml.score --telemetry telemetri.csv --site ml/situs_contoh.yaml
+## Dipakai sebagai service
+
+`ml.service` menerima dan mengembalikan tabel, tanpa membaca atau menulis file:
+
+```python
+from ml.service import score, train
+
+hasil = score(readings, site="contoh")   # tabel kontrak v1
+train(readings_normal, site="contoh")    # setelah 2-4 minggu data normal satu unit
 ```
 
-Skor tidak menyimpan status: cukup kirim riwayat 8+ hari, hasilnya file yang sama dengan yang dibaca dashboard.
-Dari kode lain, panggil `ml.score.score_telemetry()`. Unit baru memakai pvlib saja sampai ada 2–4 minggu data normal di lokasi itu.
+Skor tidak menyimpan status, jadi cukup kirim riwayat 8+ hari. Input salah memunculkan `ValueError`. Kontrak alat ada di `docs/kontrak_telemetri.md`. Untuk FastAPI, satu endpoint cukup memanggil `score()`:
+
+```python
+@app.post("/score")
+def score_endpoint(body: ScoreRequest):
+    return score(pd.DataFrame(body.readings), site=body.site).to_dict("records")
+```
+
+Dari terminal:
+
+```bash
+python -m ml score --telemetry telemetri.csv --site contoh
+python -m ml fit-site --telemetry normal.csv --site contoh
+```
 
 ## Praktik yang dijaga
 
 - Periode uji (Feb–Mei 2022) dipisah utuh, model tidak pernah melihat cuacanya.
 - Validasi `GroupKFold` per tanggal. KFold acak bocor karena jam-jam dalam sehari hampir kembar.
 - Batas alarm dikalibrasi dari prediksi out-of-fold, bukan dari data uji.
-- Aturan penyebab disusun dengan suntikan pada data latih (`python -m ml.evaluate --tune`).
+- Aturan penyebab disusun dengan suntikan pada data latih (`python -m ml evaluate --tune`).
 - Kejadian dihitung terdeteksi hanya bila alarmnya tidak muncul pada salinan tanpa gangguan.
 
 ## Berubah dari rencana awal

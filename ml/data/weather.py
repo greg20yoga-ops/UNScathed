@@ -29,9 +29,9 @@ def _get(url, site, variables, **params):
     return df
 
 
-def fetch_history(site, start, end, satellite_model="eumetsat_sarah3"):
+def fetch_history(site, start, end):
     dates = {"start_date": start, "end_date": end}
-    rad = _get(SATELLITE_URL, site, RADIATION, models=satellite_model, **dates)
+    rad = _get(SATELLITE_URL, site, RADIATION, models=site["satellite_model"], **dates)
     meteo = _get(ARCHIVE_URL, site, METEO, **dates)
     return rad.join(meteo).interpolate(limit=MAX_GAP_H, limit_area="inside")
 

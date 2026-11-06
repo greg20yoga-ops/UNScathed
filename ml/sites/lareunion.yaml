@@ -1,0 +1,30 @@
+# Lokasi evaluasi. Sumber tiap angka ada di docs/sumber_data.md.
+site:
+  name: La-Reunion
+  latitude: -20.90126
+  longitude: 55.48422
+  altitude: 76
+  tz: Indian/Reunion
+  satellite_model: eumetsat_sarah3
+
+panel:
+  tilt: 26            # Graillet dkk. 2023
+  azimuth: 11         # "11 derajat dari utara" (Graillet dkk. 2023), arah sisi belum disebut
+  gamma_pdc: -0.004   # asumsi: tipikal silikon polikristal
+  system_loss: 0.14   # asumsi: rugi kabel/mismatch, dikoreksi XGBoost
+
+units:
+  # Paper menyebut modul TE1700 dan TE1500, tapi tidak menyebut baris mana ke inverter mana.
+  # Pada hari normal inv1/inv2 = 1,00 (median), jadi keduanya dianggap berkapasitas sama.
+  inv1: {capacity_w: 1800}
+  inv2: {capacity_w: 1800}
+
+split:
+  test_start: "2022-02-01"   # semua gangguan nyata ada di rentang ini
+  test_end: "2022-06-01"
+
+rupiah:
+  tarif_rp_per_kwh: 1699.53     # P-3/TR penerangan jalan umum, tarif PLN triwulan IV 2026
+  panel_w: 50                   # skala panel PJU
+  biaya_patroli_rp: 0           # ASUMSI: menunggu docs/rupiah.md (Rafie)
+  biaya_baterai_rp: 0           # ASUMSI: menunggu docs/rupiah.md (Rafie)

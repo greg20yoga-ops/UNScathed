@@ -8,5 +8,5 @@ __pycache__/
 data/raw/kaggle/
 data/raw/*.csv
 !data/raw/.gitkeep
-# data mentah BBOXX, diunduh oleh python -m ml.prepare
+# data mentah BBOXX, diunduh oleh python -m ml prepare
 data/raw/bboxx/

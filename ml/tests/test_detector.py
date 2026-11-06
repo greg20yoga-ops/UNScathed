@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from ml import detector
+from ml.detection import detector
 
 
 def index(n):

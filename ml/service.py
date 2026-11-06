@@ -1,42 +1,39 @@
-"""Skor telemetri alat IoT menjadi file kontrak. Jalankan tiap jam:
-
-    python -m ml.score --telemetry telemetri.csv --site ml/situs_contoh.yaml
-
-telemetri.csv cukup berisi riwayat 8+ hari. Kontrak kolomnya: docs/kontrak_telemetri.md
-"""
-import argparse
-
+"""Pintu masuk ML untuk kode lain (penjadwal, FastAPI, skrip). Data masuk dan keluar sebagai tabel."""
 import pandas as pd
 
-from .config import ROOT, load_config
+from .config import load_config
+from .data.sources import telemetry_hourly
+from .data.weather import fetch_history, fetch_recent
+from .detection.pipeline import score_unit
 from .features import assemble
-from .monitor import load_artifact, score_unit
-from .telemetry import to_hourly
-from .weather import fetch_recent
+from .model import load_artifact, train_site
 
 
-def score_telemetry(readings, weather, cfg, site_cfg, artifact):
-    """Semua unit pada telemetri -> baris kontrak. Unit baru memakai pvlib saja sampai dilatih."""
-    panel_w, merged = site_cfg["rupiah"]["panel_w"], {**cfg, **site_cfg}
-    rows = []
-    for unit_id, hourly in to_hourly(readings, panel_w).groupby("unit_id"):
-        frame = assemble(hourly.drop(columns="unit_id"), weather, merged["site"], merged["panel"])
-        rows.append(score_unit(frame, artifact, merged, unit_id, "iot"))
+def _hourly_by_unit(readings, cfg):
+    hourly = telemetry_hourly(readings, cfg["rupiah"]["panel_w"])
+    if hourly.empty:
+        raise ValueError("tidak ada telemetri yang valid")
+    return hourly.groupby("unit_id")
+
+
+def score(readings, site, weather=None):
+    """Telemetri mentah (riwayat 8+ hari) -> baris kontrak v1 per unit per jam. Tanpa status."""
+    cfg = load_config(site)
+    artifact = load_artifact(site)
+    weather = fetch_recent(cfg["site"]) if weather is None else weather
+    rows = [score_unit(assemble(hourly.drop(columns="unit_id"), weather, cfg["site"], cfg["panel"]),
+                       artifact, cfg, unit_id, "iot")
+            for unit_id, hourly in _hourly_by_unit(readings, cfg)]
     return pd.concat(rows, ignore_index=True)
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--telemetry", required=True)
-    ap.add_argument("--site", required=True, help="YAML lokasi dan panel, lihat ml/situs_contoh.yaml")
-    ap.add_argument("--out", default=ROOT / "output" / "hasil_deteksi.csv")
-    args = ap.parse_args()
-    cfg, site_cfg = load_config(), load_config(args.site)
-    weather = fetch_recent(site_cfg["site"])
-    result = score_telemetry(pd.read_csv(args.telemetry), weather, cfg, site_cfg, load_artifact("weather_pvlib"))
-    result.to_csv(args.out, index=False)
-    print(f"{len(result)} baris -> {args.out}")
-
-
-if __name__ == "__main__":
-    main()
+def train(readings, site, weather=None):
+    """Latih model lokasi dari 2-4 minggu telemetri normal satu unit. Hasil dipakai otomatis oleh score()."""
+    cfg = load_config(site)
+    units = list(_hourly_by_unit(readings, cfg))
+    if len(units) != 1:  # shortcut: satu unit acuan per lokasi, gabungkan unit kalau data satu unit kurang
+        raise ValueError("latih dengan telemetri satu unit acuan")
+    hourly = units[0][1].drop(columns="unit_id")
+    if weather is None:
+        weather = fetch_history(cfg["site"], hourly.index.min().date().isoformat(), hourly.index.max().date().isoformat())
+    return train_site(assemble(hourly, weather, cfg["site"], cfg["panel"]), cfg, site)

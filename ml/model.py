@@ -1,11 +1,25 @@
-"""Koreksi XGBoost di atas pvlib: belajar kesalahan khas lokasi dari jam-jam normal."""
+"""Produksi seharusnya: koreksi XGBoost di atas pvlib, kalibrasi alarm, dan simpan-muat model per lokasi."""
+import json
+from dataclasses import dataclass
 from itertools import product
 
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import GroupKFold
 from xgboost import XGBRegressor
 
+from .config import ARTIFACT_DIR, DEFAULT_SITE
+from .detection import detector
 from .schema import FEATURES
+
+MODEL_FILE, CALIBRATION_FILE = "residual_xgb.ubj", "calibration.json"
+
+
+@dataclass
+class Artifact:
+    """Model koreksi opsional + hasil kalibrasi. model=None berarti pvlib saja."""
+    model: XGBRegressor | None
+    calibration: dict
 
 
 def _regressor(params):
@@ -50,3 +64,56 @@ def tune(frame, base_params, grid, n_folds):
 
 def fit(frame, params):
     return _regressor(params).fit(frame[FEATURES], frame["p_actual"] - frame["p_pvlib"])
+
+
+def calibrate(frame, expected_p, cfg):
+    """Profil derau + batas CUSUM dari data normal yang tidak dipakai melatih barisnya."""
+    d = cfg["detector"]
+    expected_p = pd.Series(expected_p, index=frame.index)
+    e = detector.deficit(frame["p_actual"], expected_p, detector.assessable(frame, expected_p, d))
+    profile = detector.noise_profile(e, frame["clear_index"], d["clear_index_bins"])
+    z = detector.standardize(e, frame["clear_index"], profile, d["clear_index_bins"], d["z_clip"])
+    h = detector.calibrate_h(z, d["cusum_k"], d["target_false_alarm_per_week"])
+    return {"profile": profile, "h": h, "tau_p99": float(e.quantile(0.99))}
+
+
+def train_site(frame, cfg, name, references=None):
+    """Latih + kalibrasi dari jam-jam normal, lalu simpan ke artifacts/<name>/.
+
+    references: acuan tambahan {nama: produksi per jam} yang ikut dikalibrasi.
+    """
+    day = frame[frame["sun_elevation"] >= cfg["detector"]["min_sun_elevation"]]
+    m, d = cfg["model"], cfg["detector"]
+    mae, best = tune(day, m["params"], m["grid"], m["n_folds"])
+    oof = out_of_fold(day, best, m["n_folds"])
+    calibration = {
+        "weather_xgb": calibrate(day, oof, cfg),
+        "weather_pvlib": calibrate(day, day["p_pvlib"].to_numpy(), cfg),
+        **{key: calibrate(day, value.reindex(day.index).to_numpy(), cfg) for key, value in (references or {}).items()},
+        "threshold_fair_frac": detector.calibrate_threshold(
+            day, cfg["site"]["tz"], d["threshold_hours"], d["target_false_alarm_per_week"]),
+        "params": best,
+        "mae_oof_xgb": mae,
+        "mae_oof_pvlib": float(np.abs(day["p_actual"] - day["p_pvlib"]).mean()),
+        "n_train_hours": len(day),
+    }
+    folder = ARTIFACT_DIR / name
+    folder.mkdir(parents=True, exist_ok=True)
+    fit(day, best).save_model(folder / MODEL_FILE)
+    (folder / CALIBRATION_FILE).write_text(json.dumps(calibration, indent=2))
+    return calibration
+
+
+def load_calibration(name):
+    return json.loads((ARTIFACT_DIR / name / CALIBRATION_FILE).read_text())
+
+
+def load_artifact(name, kind="weather_xgb"):
+    """Model lokasi itu. Lokasi yang belum dilatih memakai pvlib + profil derau bawaan."""
+    if not (ARTIFACT_DIR / name / MODEL_FILE).exists():
+        return Artifact(None, load_calibration(DEFAULT_SITE)["weather_pvlib"])
+    if kind == "weather_pvlib":
+        return Artifact(None, load_calibration(name)[kind])
+    model = XGBRegressor()
+    model.load_model(ARTIFACT_DIR / name / MODEL_FILE)
+    return Artifact(model, load_calibration(name)[kind])

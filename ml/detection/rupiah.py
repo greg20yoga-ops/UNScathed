@@ -1,7 +1,7 @@
 """Rugi rupiah per jam. Rumus final menunggu docs/rupiah.md; biaya patroli/baterai masih asumsi 0."""
 import pandas as pd
 
-from .schema import BATTERY_CAUSES, NEEDS_TECHNICIAN
+from ..schema import BATTERY_CAUSES, NEEDS_TECHNICIAN
 
 
 def _in_alarm_run(score, alarm):

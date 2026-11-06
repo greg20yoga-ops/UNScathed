@@ -5,6 +5,7 @@ site:
   longitude: 115.18
   altitude: 20
   tz: Asia/Makassar
+  satellite_model: satellite_radiation_seamless
 
 panel:
   tilt: 10

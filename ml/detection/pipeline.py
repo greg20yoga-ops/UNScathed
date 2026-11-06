@@ -3,32 +3,12 @@
 score_unit() tanpa status: cukup kirim riwayat beberapa hari terakhir setiap jam, lalu pakai baris
 terakhirnya. Kalau server mati, tidak ada status yang hilang.
 """
-import json
-from dataclasses import dataclass
-
 import numpy as np
 import pandas as pd
-from xgboost import XGBRegressor
 
-from . import battery, causes, detector, residual, rupiah
-from .config import ARTIFACT_DIR
-from .schema import CONTRACT_COLUMNS
-
-
-@dataclass
-class Artifact:
-    """Model koreksi opsional + hasil kalibrasi. model=None berarti pvlib saja (lokasi baru)."""
-    model: XGBRegressor | None
-    calibration: dict
-
-
-def load_artifact(kind="weather_xgb", directory=ARTIFACT_DIR):
-    stored = json.loads((directory / "calibration.json").read_text())
-    if kind == "weather_pvlib":
-        return Artifact(None, stored[kind])
-    model = XGBRegressor()
-    model.load_model(directory / "residual_xgb.ubj")
-    return Artifact(model, stored[kind])
+from .. import model
+from ..schema import CONTRACT_COLUMNS
+from . import battery, causes, detector, rupiah
 
 
 def detect(frame, expected, calibration, cfg):
@@ -66,7 +46,7 @@ def score_unit(frame, artifact, cfg, unit_id, data_source, fault_label=None, bat
     battery_history: rekaman baterai termasuk malam, bila frame hanya berisi jam siang.
     """
     tz, panel_w = cfg["site"]["tz"], cfg["rupiah"]["panel_w"]
-    out = detect(frame, residual.expected(frame, artifact.model), artifact.calibration, cfg)
+    out = detect(frame, model.expected(frame, artifact.model), artifact.calibration, cfg)
     cause = causes.guess_series(out, out["alarm"], cfg["causes"], tz)
 
     missing, weak = battery_alarms(out, cfg, battery_history)

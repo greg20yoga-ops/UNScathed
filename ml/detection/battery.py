@@ -1,21 +1,9 @@
-"""Baterai: data nyata BBOXX (Aitio & Howey 2021, CC BY-NC 4.0; aki 12 V 20 Ah + panel 50 Wp)."""
-import numpy as np
+"""Aturan baterai melemah: tegangan turun terlalu cepat per Ah saat membuang."""
 import pandas as pd
 
 DISCHARGE_MIN_A = 0.15
 MIN_DAILY_AH = 3
 UTC_OFFSET_H = 3  # Afrika Sub-Sahara; zona pasti tidak dicatat dataset
-
-
-def load_npz(path):
-    """Berkas BBOXX: unix time, arus (negatif = mengisi), tegangan, suhu.
-
-    Tanda arus dibalik mengikuti kontrak repo: positif = mengisi.
-    """
-    data = np.load(path, allow_pickle=False)["arr_0"]
-    frame = pd.DataFrame({"batt_i_a": -data[:, 1], "batt_v": data[:, 2]},
-                         index=pd.to_datetime(data[:, 0], unit="s", utc=True).rename("timestamp"))
-    return frame.resample("1h", label="right", closed="right").mean().dropna()
 
 
 def sag_per_ah(hourly):

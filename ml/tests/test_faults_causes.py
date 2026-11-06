@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml import causes, faults, rupiah
+from ml.detection import causes, rupiah
+from ml.evaluation import faults
 from ml.config import load_config
 
 CFG = load_config()

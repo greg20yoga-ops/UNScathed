@@ -3,14 +3,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ml import model, service
 from ml.config import load_config
-from ml.monitor import Artifact
+from ml.data.sources import telemetry_hourly, validate_telemetry
 from ml.schema import CONTRACT_COLUMNS, CAUSES
-from ml.score import score_telemetry
-from ml.telemetry import to_hourly, validate
 
-CFG = load_config()
-SITE = load_config("ml/situs_contoh.yaml")
 CALIBRATION = {"profile": {str(i): {"median": 0.0, "sigma": 0.15} for i in range(3)}, "h": 8.5}
 
 
@@ -37,8 +34,14 @@ def readings(cut_from=None, batt_gone_from=None):
     return frame
 
 
+@pytest.fixture(autouse=True)
+def pvlib_only(monkeypatch):
+    """Skor memakai kalibrasi tetap, supaya test tidak bergantung pada hasil latih."""
+    monkeypatch.setattr(service, "load_artifact", lambda site: model.Artifact(None, CALIBRATION))
+
+
 def score(frame):
-    return score_telemetry(frame, weather(), CFG, SITE, Artifact(None, CALIBRATION))
+    return service.score(frame, "contoh", weather=weather())
 
 
 def test_contract_columns_and_values():
@@ -75,19 +78,44 @@ def test_full_battery_suppresses_false_alarm():
 
 def test_validate_rejects_missing_columns():
     with pytest.raises(ValueError, match="pv_i"):
-        validate(pd.DataFrame({"timestamp": [], "unit_id": [], "pv_v": []}))
+        validate_telemetry(pd.DataFrame({"timestamp": [], "unit_id": [], "pv_v": []}))
 
 
 def test_validate_drops_bad_rows_and_duplicates():
     frame = pd.DataFrame({"timestamp": ["2026-10-01T10:00:00+08:00", "2026-10-01T10:00:00+08:00", "bukan-waktu",
                                         "2026-10-01T10:10:00+08:00"],
                           "unit_id": "PJU-01", "pv_v": [18, 18, 18, 999], "pv_i": [1, 1, 1, 1]})
-    assert len(validate(frame)) == 1
+    assert len(validate_telemetry(frame)) == 1
 
 
 def test_to_hourly_uses_hour_end_and_mean_power():
     stamps = [f"2026-10-01T10:{m:02d}:00+00:00" for m in (10, 20, 30)]
     frame = pd.DataFrame({"timestamp": stamps, "unit_id": "PJU-01", "pv_v": 10.0, "pv_i": [1.0, 2.0, 3.0]})
-    out = to_hourly(frame, 50)
+    out = telemetry_hourly(frame, 50)
     assert out.index[0] == pd.Timestamp("2026-10-01 11:00", tz="UTC")
     assert out["p_actual"].iloc[0] == pytest.approx(20 / 50)
+
+
+def test_score_rejects_empty_telemetry():
+    empty = pd.DataFrame({"timestamp": ["rusak"], "unit_id": ["PJU-01"], "pv_v": [18], "pv_i": [1]})
+    with pytest.raises(ValueError, match="tidak ada telemetri"):
+        score(empty)
+
+
+@pytest.mark.parametrize("site", ["../rahasia", "tidak-ada"])
+def test_site_name_is_validated(site):
+    with pytest.raises(ValueError, match="lokasi"):
+        load_config(site)
+
+
+def test_train_saves_site_model_and_score_can_use_it(monkeypatch, tmp_path):
+    monkeypatch.setattr(model, "ARTIFACT_DIR", tmp_path)
+    service.train(readings(), "contoh", weather=weather())
+    assert (tmp_path / "contoh" / model.MODEL_FILE).exists()
+    assert model.load_artifact("contoh").model is not None
+
+
+def test_train_needs_one_reference_unit():
+    two_units = pd.concat([readings(), readings().assign(unit_id="PJU-02")])
+    with pytest.raises(ValueError, match="satu unit"):
+        service.train(two_units, "contoh", weather=weather())

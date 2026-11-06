@@ -2,7 +2,7 @@
 
 Dipakai oleh dashboard (app.py) dan bot Telegram (telegram_bot.py).
 Urutan sumber:
-  1. output/hasil_deteksi.csv          -> format kontrak v1 (dibuat model/detector.py Christian)
+  1. output/hasil_deteksi.csv          -> format kontrak v1 (dibuat ml/ Christian)
   2. data/sim/output_<skenario>.csv    -> format lama Christian, dikonversi ke kontrak v1 (sementara)
 """
 import re
